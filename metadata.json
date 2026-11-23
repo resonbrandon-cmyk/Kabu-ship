@@ -1,0 +1,6 @@
+{
+  "name": "kabu-ship",
+  "description": "Track WhatsApp and Instagram orders from DM inquiry and payment to packing, courier dispatch, and doorstep delivery.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

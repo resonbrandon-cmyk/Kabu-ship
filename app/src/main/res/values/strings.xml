@@ -1,0 +1,45 @@
+<resources>
+    <string name="app_name">kabu-ship</string>
+    <string name="app_tagline">WhatsApp &amp; Instagram Order-to-Delivery Tracker</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="sign_out">Sign out</string>
+
+    <!-- Navigation -->
+    <string name="nav_services">Services</string>
+    <string name="nav_pipeline">Orders</string>
+    <string name="nav_dispatch">Dispatch</string>
+    <string name="nav_customers">Customers</string>
+    <string name="nav_overview">Store</string>
+
+    <!-- Channels -->
+    <string name="channel_all">All</string>
+    <string name="channel_whatsapp">WhatsApp</string>
+    <string name="channel_instagram">Instagram</string>
+
+    <!-- Kabarak Marketplace -->
+    <string name="action_publish_service">Offer Service</string>
+    <string name="action_order_now">Order Now</string>
+    <string name="empty_services_title">No Kabarak services listed yet</string>
+    <string name="empty_services_subtitle">Publish food, clean water delivery, gas refills, laundry, or printing services for Kabarak University students and the community.</string>
+
+    <!-- Actions -->
+    <string name="action_new_order">New Order</string>
+    <string name="action_add_customer">Add Customer</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_back">Back</string>
+    <string name="action_copy_dm">Copy Update</string>
+    <string name="action_send_whatsapp">WhatsApp</string>
+    <string name="action_share_dm">Share DM</string>
+    <string name="action_retry">Retry</string>
+
+    <!-- Empty & Error States -->
+    <string name="empty_orders_title">No social orders yet</string>
+    <string name="empty_orders_subtitle">Log your first WhatsApp or Instagram DM order to track payments, packing, and courier delivery.</string>
+    <string name="empty_dispatch_title">Dispatch queue is clear</string>
+    <string name="empty_dispatch_subtitle">Orders marked Paid, Packing, or Shipped will appear here for quick courier handoff.</string>
+    <string name="empty_customers_title">No saved customers yet</string>
+    <string name="empty_customers_subtitle">Add repeat WhatsApp or Instagram buyers to auto-fill handles and delivery addresses.</string>
+</resources>

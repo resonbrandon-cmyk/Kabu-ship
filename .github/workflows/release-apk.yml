@@ -1,0 +1,63 @@
+name: Build & Publish kabu-ship APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Build & Publish Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Decode debug keystore
+        run: |
+          if [ -f debug.keystore.base64 ]; then
+            base64 -d debug.keystore.base64 > debug.keystore
+          fi
+
+      - name: Run unit tests & build APK
+        run: gradle :app:testDebugUnitTest :app:assembleDebug
+
+      - name: Rename APK for sharing
+        run: cp app/build/outputs/apk/debug/app-debug.apk kabu-ship.apk
+
+      - name: Upload APK workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kabu-ship-apk
+          path: kabu-ship.apk
+
+      - name: Publish free download release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: kabu-ship Latest Android APK
+          body: |
+            Install **kabu-ship** on Android:
+            1. Download `kabu-ship.apk` below.
+            2. Open the file on your Android phone and allow **Install unknown apps** if prompted.
+            3. Sign in with your Google account to browse or offer Kabarak University & community services.
+          files: kabu-ship.apk
+          prerelease: false
+          make_latest: true

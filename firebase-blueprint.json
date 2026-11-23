@@ -1,0 +1,224 @@
+{
+  "entities": {
+    "SellerProfile": {
+      "title": "SellerProfile",
+      "description": "Seller workspace preferences and store identity for Kabarak services, WhatsApp, and Instagram order tracking.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Authenticated Firebase UID." },
+        "storeName": { "type": "string", "description": "Store or service provider name." },
+        "currencySymbol": { "type": "string", "description": "Display currency symbol such as KSh or $." },
+        "defaultGreeting": { "type": "string", "description": "Optional custom greeting prefix for customer DM updates." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["userId", "storeName", "currencySymbol", "createdAt", "updatedAt"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Repeat buyer or contact from WhatsApp or Instagram DMs.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase UID." },
+        "displayName": { "type": "string", "description": "Customer full name." },
+        "channel": { "type": "string", "enum": ["WHATSAPP", "INSTAGRAM"], "description": "Primary social channel." },
+        "handleOrPhone": { "type": "string", "description": "Instagram @handle or WhatsApp phone number." },
+        "email": { "type": "string", "description": "Optional customer email." },
+        "shippingAddress": { "type": "string", "description": "Optional default delivery address." },
+        "notes": { "type": "string", "description": "Optional customer delivery notes." },
+        "orderCount": { "type": "integer", "description": "Total logged orders." },
+        "totalSpentCents": { "type": "integer", "description": "Cumulative order value in minor units." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["userId", "displayName", "channel", "handleOrPhone", "orderCount", "totalSpentCents", "createdAt", "updatedAt"]
+    },
+    "SocialOrder": {
+      "title": "SocialOrder",
+      "description": "A WhatsApp or Instagram DM order logged by a seller.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase UID." },
+        "orderCode": { "type": "string", "description": "Human-readable order code." },
+        "customerId": { "type": "string", "description": "Optional linked customer ID." },
+        "customerName": { "type": "string", "description": "Customer display name." },
+        "channel": { "type": "string", "enum": ["WHATSAPP", "INSTAGRAM"], "description": "Originating social platform." },
+        "handleOrPhone": { "type": "string", "description": "Instagram @handle or WhatsApp phone number." },
+        "shippingAddress": { "type": "string", "description": "Delivery street address or hostel." },
+        "itemsSummary": { "type": "string", "description": "Summary of ordered items." },
+        "itemCount": { "type": "integer", "description": "Total item units." },
+        "totalCents": { "type": "integer", "description": "Total price in minor units." },
+        "currencySymbol": { "type": "string", "description": "Currency symbol." },
+        "paymentMethod": { "type": "string", "enum": ["PREPAID", "COD", "BANK_TRANSFER", "LINK", "MPESA"], "description": "Payment method." },
+        "paymentStatus": { "type": "string", "enum": ["PENDING", "PARTIAL", "PAID", "COD_DUE", "REFUNDED"], "description": "Payment status." },
+        "stage": { "type": "string", "enum": ["NEW_DM", "PAID", "PACKING", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"], "description": "Pipeline stage." },
+        "courierName": { "type": "string", "description": "Optional courier or rider name." },
+        "trackingNumber": { "type": "string", "description": "Optional tracking code." },
+        "notes": { "type": "string", "description": "Optional packing notes." },
+        "dmMessageSnapshot": { "type": "string", "description": "Optional original DM snippet." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["userId", "orderCode", "customerName", "channel", "handleOrPhone", "itemsSummary", "itemCount", "totalCents", "currencySymbol", "paymentMethod", "paymentStatus", "stage", "createdAt", "updatedAt"]
+    },
+    "OrderEvent": {
+      "title": "OrderEvent",
+      "description": "Immutable timeline milestone for a SocialOrder.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase UID." },
+        "orderId": { "type": "string", "description": "Parent SocialOrder ID." },
+        "stage": { "type": "string", "enum": ["NEW_DM", "PAID", "PACKING", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"], "description": "Stage." },
+        "title": { "type": "string", "description": "Milestone headline." },
+        "note": { "type": "string", "description": "Optional detail." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["userId", "orderId", "stage", "title", "createdAt"]
+    },
+    "ServiceListing": {
+      "title": "ServiceListing",
+      "description": "Service or product offered around Kabarak University for students and community.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "description": "Service provider Firebase UID." },
+        "providerName": { "type": "string", "description": "Vendor or provider display name." },
+        "title": { "type": "string", "description": "Service or meal title." },
+        "category": { "type": "string", "enum": ["FOOD", "WATER", "GAS", "LAUNDRY", "PRINTING", "GROCERIES", "ERRANDS", "OTHER"], "description": "Service category." },
+        "zone": { "type": "string", "enum": ["MAIN_GATE", "HOSTELS", "RAFIKI", "OLIVE", "KIAMUNYI", "STAFF_QUARTERS", "COMMUNITY"], "description": "Kabarak area zone." },
+        "description": { "type": "string", "description": "Service description and details." },
+        "priceCents": { "type": "integer", "description": "Unit price in minor currency units." },
+        "currencySymbol": { "type": "string", "description": "Currency symbol." },
+        "unitLabel": { "type": "string", "description": "Unit label e.g. per 20L jerrycan." },
+        "etaLabel": { "type": "string", "description": "Estimated delivery time e.g. 15-25 mins." },
+        "contactChannel": { "type": "string", "enum": ["WHATSAPP", "INSTAGRAM"], "description": "Preferred DM channel." },
+        "contactHandle": { "type": "string", "description": "Provider WhatsApp phone or Instagram @handle." },
+        "available": { "type": "boolean", "description": "Whether the service is currently accepting orders." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["ownerUid", "providerName", "title", "category", "zone", "description", "priceCents", "currencySymbol", "unitLabel", "etaLabel", "contactChannel", "contactHandle", "available", "createdAt", "updatedAt"]
+    },
+    "MarketplaceOrder": {
+      "title": "MarketplaceOrder",
+      "description": "Interactive order placed by a Kabarak student/community customer to a service provider.",
+      "type": "object",
+      "properties": {
+        "orderCode": { "type": "string", "description": "Human-readable order code." },
+        "serviceId": { "type": "string", "description": "Referenced ServiceListing ID." },
+        "serviceTitle": { "type": "string", "description": "Ordered service title." },
+        "category": { "type": "string", "enum": ["FOOD", "WATER", "GAS", "LAUNDRY", "PRINTING", "GROCERIES", "ERRANDS", "OTHER"], "description": "Service category." },
+        "buyerUid": { "type": "string", "description": "Customer Firebase UID." },
+        "buyerName": { "type": "string", "description": "Customer name." },
+        "buyerHandleOrPhone": { "type": "string", "description": "Customer WhatsApp phone or IG handle." },
+        "sellerUid": { "type": "string", "description": "Service provider Firebase UID." },
+        "sellerName": { "type": "string", "description": "Service provider name." },
+        "sellerHandleOrPhone": { "type": "string", "description": "Service provider WhatsApp phone or IG handle." },
+        "deliveryZone": { "type": "string", "enum": ["MAIN_GATE", "HOSTELS", "RAFIKI", "OLIVE", "KIAMUNYI", "STAFF_QUARTERS", "COMMUNITY"], "description": "Delivery zone around Kabarak." },
+        "deliveryDetails": { "type": "string", "description": "Hostel block, room, gate, or landmark instructions." },
+        "quantity": { "type": "integer", "description": "Quantity ordered." },
+        "unitPriceCents": { "type": "integer", "description": "Unit price in minor units." },
+        "totalCents": { "type": "integer", "description": "Total order price in minor units." },
+        "currencySymbol": { "type": "string", "description": "Currency symbol." },
+        "paymentMethod": { "type": "string", "enum": ["PREPAID", "COD", "BANK_TRANSFER", "LINK", "MPESA"], "description": "Payment method." },
+        "paymentStatus": { "type": "string", "enum": ["PENDING", "PARTIAL", "PAID", "COD_DUE", "REFUNDED"], "description": "Payment status." },
+        "stage": { "type": "string", "enum": ["NEW_DM", "PAID", "PACKING", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"], "description": "Order fulfillment stage." },
+        "courierName": { "type": "string", "description": "Optional rider or courier name." },
+        "trackingNumber": { "type": "string", "description": "Optional rider phone or tracking code." },
+        "notes": { "type": "string", "description": "Optional order instructions." },
+        "lastMessagePreview": { "type": "string", "description": "Latest chat message preview." },
+        "unreadForSeller": { "type": "boolean", "description": "Unread indicator for seller." },
+        "unreadForBuyer": { "type": "boolean", "description": "Unread indicator for buyer." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["orderCode", "serviceId", "serviceTitle", "category", "buyerUid", "buyerName", "buyerHandleOrPhone", "sellerUid", "sellerName", "sellerHandleOrPhone", "deliveryZone", "deliveryDetails", "quantity", "unitPriceCents", "totalCents", "currencySymbol", "paymentMethod", "paymentStatus", "stage", "unreadForSeller", "unreadForBuyer", "createdAt", "updatedAt"]
+    },
+    "MarketplaceOrderEvent": {
+      "title": "MarketplaceOrderEvent",
+      "description": "Immutable milestone event on a MarketplaceOrder.",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string", "description": "Parent MarketplaceOrder ID." },
+        "buyerUid": { "type": "string", "description": "Denormalized buyer UID." },
+        "sellerUid": { "type": "string", "description": "Denormalized seller UID." },
+        "actorUid": { "type": "string", "description": "UID that triggered the event." },
+        "stage": { "type": "string", "enum": ["NEW_DM", "PAID", "PACKING", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"], "description": "Order stage." },
+        "title": { "type": "string", "description": "Event headline." },
+        "note": { "type": "string", "description": "Optional detail." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["orderId", "buyerUid", "sellerUid", "actorUid", "stage", "title", "createdAt"]
+    },
+    "OrderMessage": {
+      "title": "OrderMessage",
+      "description": "Real-time interactive chat message between customer and service provider.",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string", "description": "Parent MarketplaceOrder ID." },
+        "buyerUid": { "type": "string", "description": "Denormalized buyer UID." },
+        "sellerUid": { "type": "string", "description": "Denormalized seller UID." },
+        "senderUid": { "type": "string", "description": "Author UID." },
+        "senderName": { "type": "string", "description": "Author display name." },
+        "senderRole": { "type": "string", "enum": ["BUYER", "SELLER"], "description": "Sender role on this order." },
+        "text": { "type": "string", "description": "Chat message body." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["orderId", "buyerUid", "sellerUid", "senderUid", "senderName", "senderRole", "text", "createdAt"]
+    },
+    "AppNotification": {
+      "title": "AppNotification",
+      "description": "Real-time notification delivered to a seller or buyer inbox.",
+      "type": "object",
+      "properties": {
+        "recipientUid": { "type": "string", "description": "Inbox owner UID." },
+        "senderUid": { "type": "string", "description": "Triggering user UID." },
+        "orderId": { "type": "string", "description": "Associated MarketplaceOrder ID." },
+        "orderCode": { "type": "string", "description": "Order code." },
+        "title": { "type": "string", "description": "Notification title." },
+        "body": { "type": "string", "description": "Notification message body." },
+        "type": { "type": "string", "enum": ["NEW_ORDER", "STAGE_UPDATE", "NEW_MESSAGE"], "description": "Notification event type." },
+        "read": { "type": "boolean", "description": "Whether recipient has viewed the notification." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["recipientUid", "senderUid", "orderId", "orderCode", "title", "body", "type", "read", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/SellerProfile" },
+      "description": "Seller workspace settings and store profile."
+    },
+    "/users/{userId}/customers/{customerId}": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "User-scoped WhatsApp and Instagram customer directory."
+    },
+    "/users/{userId}/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/SocialOrder" },
+      "description": "User-scoped WhatsApp and Instagram orders logged manually."
+    },
+    "/users/{userId}/orders/{orderId}/events/{eventId}": {
+      "schema": { "$ref": "#/entities/OrderEvent" },
+      "description": "Append-only timeline milestones for manual SocialOrders."
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/AppNotification" },
+      "description": "Real-time seller and customer order/chat notification inbox."
+    },
+    "/services/{serviceId}": {
+      "schema": { "$ref": "#/entities/ServiceListing" },
+      "description": "Kabarak University & community service catalog (food, water, gas, laundry, printing, etc.)."
+    },
+    "/marketplace_orders/{orderId}": {
+      "schema": { "$ref": "#/entities/MarketplaceOrder" },
+      "description": "Interactive orders shared between Kabarak customers and service providers."
+    },
+    "/marketplace_orders/{orderId}/events/{eventId}": {
+      "schema": { "$ref": "#/entities/MarketplaceOrderEvent" },
+      "description": "Immutable milestone timeline for marketplace orders."
+    },
+    "/marketplace_orders/{orderId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/OrderMessage" },
+      "description": "Real-time interactive chat messages between buyer and service provider."
+    }
+  }
+}

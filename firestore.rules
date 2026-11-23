@@ -1,0 +1,477 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Primitive Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isValidChannel(channel) {
+      return channel is string && channel in ['WHATSAPP', 'INSTAGRAM'];
+    }
+
+    function isValidPaymentMethod(method) {
+      return method is string && method in ['PREPAID', 'COD', 'BANK_TRANSFER', 'LINK', 'MPESA'];
+    }
+
+    function isValidPaymentStatus(status) {
+      return status is string && status in ['PENDING', 'PARTIAL', 'PAID', 'COD_DUE', 'REFUNDED'];
+    }
+
+    function isValidStage(stage) {
+      return stage is string && stage in ['NEW_DM', 'PAID', 'PACKING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'];
+    }
+
+    function isValidServiceCategory(category) {
+      return category is string && category in ['FOOD', 'WATER', 'GAS', 'LAUNDRY', 'PRINTING', 'GROCERIES', 'ERRANDS', 'OTHER'];
+    }
+
+    function isValidKabarakZone(zone) {
+      return zone is string && zone in ['MAIN_GATE', 'HOSTELS', 'RAFIKI', 'OLIVE', 'KIAMUNYI', 'STAFF_QUARTERS', 'COMMUNITY'];
+    }
+
+    function isValidNotificationType(nType) {
+      return nType is string && nType in ['NEW_ORDER', 'STAGE_UPDATE', 'NEW_MESSAGE'];
+    }
+
+    // --- Entity Validation Helpers ---
+
+    function isValidSellerProfile(data, userId) {
+      return data.userId == userId &&
+             data.storeName is string && data.storeName.size() >= 1 && data.storeName.size() <= 60 &&
+             data.currencySymbol is string && data.currencySymbol.size() >= 1 && data.currencySymbol.size() <= 5 &&
+             (!('defaultGreeting' in data) || (data.defaultGreeting is string && data.defaultGreeting.size() <= 200)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidCustomer(data, userId) {
+      return data.userId == userId &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             isValidChannel(data.channel) &&
+             data.handleOrPhone is string && data.handleOrPhone.size() >= 1 && data.handleOrPhone.size() <= 60 &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 120)) &&
+             (!('shippingAddress' in data) || (data.shippingAddress is string && data.shippingAddress.size() <= 250)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 400)) &&
+             data.orderCount is int && data.orderCount >= 0 && data.orderCount <= 100000 &&
+             data.totalSpentCents is int && data.totalSpentCents >= 0 && data.totalSpentCents <= 1000000000 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidSocialOrder(data, userId) {
+      return data.userId == userId &&
+             data.orderCode is string && data.orderCode.size() >= 2 && data.orderCode.size() <= 32 &&
+             (!('customerId' in data) || isValidId(data.customerId)) &&
+             data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 80 &&
+             isValidChannel(data.channel) &&
+             data.handleOrPhone is string && data.handleOrPhone.size() >= 1 && data.handleOrPhone.size() <= 60 &&
+             (!('shippingAddress' in data) || (data.shippingAddress is string && data.shippingAddress.size() <= 250)) &&
+             data.itemsSummary is string && data.itemsSummary.size() >= 1 && data.itemsSummary.size() <= 300 &&
+             data.itemCount is int && data.itemCount >= 1 && data.itemCount <= 10000 &&
+             data.totalCents is int && data.totalCents >= 0 && data.totalCents <= 1000000000 &&
+             data.currencySymbol is string && data.currencySymbol.size() >= 1 && data.currencySymbol.size() <= 5 &&
+             isValidPaymentMethod(data.paymentMethod) &&
+             isValidPaymentStatus(data.paymentStatus) &&
+             isValidStage(data.stage) &&
+             (!('courierName' in data) || (data.courierName is string && data.courierName.size() <= 60)) &&
+             (!('trackingNumber' in data) || (data.trackingNumber is string && data.trackingNumber.size() <= 80)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 400)) &&
+             (!('dmMessageSnapshot' in data) || (data.dmMessageSnapshot is string && data.dmMessageSnapshot.size() <= 600)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidOrderEvent(data, userId, orderId) {
+      return data.userId == userId &&
+             data.orderId == orderId &&
+             isValidStage(data.stage) &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+             (!('note' in data) || (data.note is string && data.note.size() <= 300)) &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidServiceListing(data) {
+      return isValidId(data.ownerUid) &&
+             data.providerName is string && data.providerName.size() >= 1 && data.providerName.size() <= 80 &&
+             data.title is string && data.title.size() >= 2 && data.title.size() <= 90 &&
+             isValidServiceCategory(data.category) &&
+             isValidKabarakZone(data.zone) &&
+             data.description is string && data.description.size() >= 1 && data.description.size() <= 400 &&
+             data.priceCents is int && data.priceCents >= 0 && data.priceCents <= 1000000000 &&
+             data.currencySymbol is string && data.currencySymbol.size() >= 1 && data.currencySymbol.size() <= 5 &&
+             data.unitLabel is string && data.unitLabel.size() >= 1 && data.unitLabel.size() <= 40 &&
+             data.etaLabel is string && data.etaLabel.size() >= 1 && data.etaLabel.size() <= 40 &&
+             isValidChannel(data.contactChannel) &&
+             data.contactHandle is string && data.contactHandle.size() >= 1 && data.contactHandle.size() <= 60 &&
+             data.available is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidMarketplaceOrder(data) {
+      return data.orderCode is string && data.orderCode.size() >= 2 && data.orderCode.size() <= 32 &&
+             isValidId(data.serviceId) &&
+             data.serviceTitle is string && data.serviceTitle.size() >= 2 && data.serviceTitle.size() <= 90 &&
+             isValidServiceCategory(data.category) &&
+             isValidId(data.buyerUid) &&
+             data.buyerName is string && data.buyerName.size() >= 1 && data.buyerName.size() <= 80 &&
+             data.buyerHandleOrPhone is string && data.buyerHandleOrPhone.size() >= 1 && data.buyerHandleOrPhone.size() <= 60 &&
+             isValidId(data.sellerUid) &&
+             data.sellerName is string && data.sellerName.size() >= 1 && data.sellerName.size() <= 80 &&
+             data.sellerHandleOrPhone is string && data.sellerHandleOrPhone.size() >= 1 && data.sellerHandleOrPhone.size() <= 60 &&
+             isValidKabarakZone(data.deliveryZone) &&
+             data.deliveryDetails is string && data.deliveryDetails.size() >= 1 && data.deliveryDetails.size() <= 250 &&
+             data.quantity is int && data.quantity >= 1 && data.quantity <= 1000 &&
+             data.unitPriceCents is int && data.unitPriceCents >= 0 && data.unitPriceCents <= 1000000000 &&
+             data.totalCents is int && data.totalCents >= 0 && data.totalCents <= 1000000000 &&
+             data.currencySymbol is string && data.currencySymbol.size() >= 1 && data.currencySymbol.size() <= 5 &&
+             isValidPaymentMethod(data.paymentMethod) &&
+             isValidPaymentStatus(data.paymentStatus) &&
+             isValidStage(data.stage) &&
+             (!('courierName' in data) || (data.courierName is string && data.courierName.size() <= 60)) &&
+             (!('trackingNumber' in data) || (data.trackingNumber is string && data.trackingNumber.size() <= 80)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 400)) &&
+             (!('lastMessagePreview' in data) || (data.lastMessagePreview is string && data.lastMessagePreview.size() <= 200)) &&
+             data.unreadForSeller is bool &&
+             data.unreadForBuyer is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidMarketplaceEvent(data, orderId) {
+      return data.orderId == orderId &&
+             isValidId(data.buyerUid) &&
+             isValidId(data.sellerUid) &&
+             isValidId(data.actorUid) &&
+             isValidStage(data.stage) &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+             (!('note' in data) || (data.note is string && data.note.size() <= 300)) &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidOrderMessage(data, orderId) {
+      return data.orderId == orderId &&
+             isValidId(data.buyerUid) &&
+             isValidId(data.sellerUid) &&
+             isValidId(data.senderUid) &&
+             data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 80 &&
+             data.senderRole in ['BUYER', 'SELLER'] &&
+             data.text is string && data.text.size() >= 1 && data.text.size() <= 500 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidAppNotification(data, recipientUid) {
+      return data.recipientUid == recipientUid &&
+             isValidId(data.senderUid) &&
+             isValidId(data.orderId) &&
+             data.orderCode is string && data.orderCode.size() >= 2 && data.orderCode.size() <= 32 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+             data.body is string && data.body.size() >= 1 && data.body.size() <= 240 &&
+             isValidNotificationType(data.type) &&
+             data.read is bool &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    // --- Collection Rules ---
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().keys().hasAll(['userId', 'storeName', 'currencySymbol', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'storeName', 'currencySymbol', 'defaultGreeting', 'createdAt', 'updatedAt']) &&
+                       isValidSellerProfile(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidSellerProfile(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['storeName', 'currencySymbol', 'defaultGreeting', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /customers/{customerId} {
+        allow get: if isOwner(userId) && isValidId(customerId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(customerId) &&
+                         incoming().keys().hasAll(['userId', 'displayName', 'channel', 'handleOrPhone', 'orderCount', 'totalSpentCents', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'displayName', 'channel', 'handleOrPhone', 'email', 'shippingAddress', 'notes', 'orderCount', 'totalSpentCents', 'createdAt', 'updatedAt']) &&
+                         isValidCustomer(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(customerId) &&
+                         isValidCustomer(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'channel', 'handleOrPhone', 'email', 'shippingAddress', 'notes', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['orderCount', 'totalSpentCents', 'updatedAt'])
+                         );
+
+        allow delete: if isOwner(userId) && isValidId(customerId);
+      }
+
+      match /orders/{orderId} {
+        allow get: if isOwner(userId) && isValidId(orderId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(orderId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'orderCode', 'customerName', 'channel', 'handleOrPhone',
+                           'itemsSummary', 'itemCount', 'totalCents', 'currencySymbol',
+                           'paymentMethod', 'paymentStatus', 'stage', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'orderCode', 'customerId', 'customerName', 'channel', 'handleOrPhone',
+                           'shippingAddress', 'itemsSummary', 'itemCount', 'totalCents', 'currencySymbol',
+                           'paymentMethod', 'paymentStatus', 'stage', 'courierName', 'trackingNumber',
+                           'notes', 'dmMessageSnapshot', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidSocialOrder(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(orderId) &&
+                         isValidSocialOrder(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         existing().stage != 'DELIVERED' &&
+                         existing().stage != 'CANCELLED' &&
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['stage', 'courierName', 'trackingNumber', 'paymentStatus', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['paymentStatus', 'paymentMethod', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'customerId', 'customerName', 'channel', 'handleOrPhone',
+                             'shippingAddress', 'itemsSummary', 'itemCount', 'totalCents', 'currencySymbol',
+                             'paymentMethod', 'paymentStatus', 'stage', 'courierName', 'trackingNumber',
+                             'notes', 'dmMessageSnapshot', 'updatedAt'
+                           ])
+                         );
+
+        allow delete: if isOwner(userId) && isValidId(orderId);
+
+        match /events/{eventId} {
+          allow get: if isOwner(userId) && isValidId(orderId) && isValidId(eventId);
+          allow list: if isOwner(userId) && isValidId(orderId);
+
+          allow create: if isOwner(userId) &&
+                           isValidId(orderId) &&
+                           isValidId(eventId) &&
+                           incoming().keys().hasAll(['userId', 'orderId', 'stage', 'title', 'createdAt']) &&
+                           incoming().keys().hasOnly(['userId', 'orderId', 'stage', 'title', 'note', 'createdAt']) &&
+                           isValidOrderEvent(incoming(), userId, orderId) &&
+                           existsAfter(/databases/$(database)/documents/users/$(userId)/orders/$(orderId));
+
+          allow update: if false;
+          allow delete: if isOwner(userId) && isValidId(orderId) && isValidId(eventId);
+        }
+      }
+
+      match /notifications/{notificationId} {
+        allow get: if isOwner(userId) && isValidId(notificationId);
+        allow list: if isOwner(userId);
+
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(notificationId) &&
+                         incoming().keys().hasAll(['recipientUid', 'senderUid', 'orderId', 'orderCode', 'title', 'body', 'type', 'read', 'createdAt']) &&
+                         incoming().keys().hasOnly(['recipientUid', 'senderUid', 'orderId', 'orderCode', 'title', 'body', 'type', 'read', 'createdAt']) &&
+                         incoming().senderUid == request.auth.uid &&
+                         incoming().read == false &&
+                         isValidAppNotification(incoming(), userId) &&
+                         existsAfter(/databases/$(database)/documents/marketplace_orders/$(incoming().orderId)) &&
+                         (
+                           getAfter(/databases/$(database)/documents/marketplace_orders/$(incoming().orderId)).data.buyerUid == request.auth.uid ||
+                           getAfter(/databases/$(database)/documents/marketplace_orders/$(incoming().orderId)).data.sellerUid == request.auth.uid
+                         ) &&
+                         (
+                           getAfter(/databases/$(database)/documents/marketplace_orders/$(incoming().orderId)).data.buyerUid == userId ||
+                           getAfter(/databases/$(database)/documents/marketplace_orders/$(incoming().orderId)).data.sellerUid == userId
+                         );
+
+        allow update: if isOwner(userId) &&
+                         isValidId(notificationId) &&
+                         isValidAppNotification(incoming(), userId) &&
+                         incoming().recipientUid == existing().recipientUid &&
+                         incoming().senderUid == existing().senderUid &&
+                         incoming().orderId == existing().orderId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+
+        allow delete: if isOwner(userId) && isValidId(notificationId);
+      }
+    }
+
+    // --- Kabarak University & Community Services Catalog ---
+    match /services/{serviceId} {
+      allow get: if isSignedIn() && isValidId(serviceId);
+      allow list: if isSignedIn() && (resource.data.available == true || resource.data.ownerUid == request.auth.uid);
+
+      allow create: if isSignedIn() &&
+                       isValidId(serviceId) &&
+                       incoming().ownerUid == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'ownerUid', 'providerName', 'title', 'category', 'zone', 'description',
+                         'priceCents', 'currencySymbol', 'unitLabel', 'etaLabel',
+                         'contactChannel', 'contactHandle', 'available', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'ownerUid', 'providerName', 'title', 'category', 'zone', 'description',
+                         'priceCents', 'currencySymbol', 'unitLabel', 'etaLabel',
+                         'contactChannel', 'contactHandle', 'available', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidServiceListing(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(serviceId) &&
+                       existing().ownerUid == request.auth.uid &&
+                       incoming().ownerUid == existing().ownerUid &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidServiceListing(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'providerName', 'title', 'category', 'zone', 'description',
+                         'priceCents', 'currencySymbol', 'unitLabel', 'etaLabel',
+                         'contactChannel', 'contactHandle', 'available', 'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() && isValidId(serviceId) && existing().ownerUid == request.auth.uid;
+    }
+
+    // --- Interactive Marketplace Orders (Buyer <-> Service Provider) ---
+    match /marketplace_orders/{orderId} {
+      allow get: if isSignedIn() && isValidId(orderId) &&
+                    (existing().buyerUid == request.auth.uid || existing().sellerUid == request.auth.uid);
+      allow list: if isSignedIn() &&
+                     (resource.data.buyerUid == request.auth.uid || resource.data.sellerUid == request.auth.uid);
+
+      allow create: if isSignedIn() &&
+                       isValidId(orderId) &&
+                       incoming().buyerUid == request.auth.uid &&
+                       incoming().stage == 'NEW_DM' &&
+                       incoming().keys().hasAll([
+                         'orderCode', 'serviceId', 'serviceTitle', 'category',
+                         'buyerUid', 'buyerName', 'buyerHandleOrPhone',
+                         'sellerUid', 'sellerName', 'sellerHandleOrPhone',
+                         'deliveryZone', 'deliveryDetails',
+                         'quantity', 'unitPriceCents', 'totalCents', 'currencySymbol',
+                         'paymentMethod', 'paymentStatus', 'stage',
+                         'unreadForSeller', 'unreadForBuyer', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'orderCode', 'serviceId', 'serviceTitle', 'category',
+                         'buyerUid', 'buyerName', 'buyerHandleOrPhone',
+                         'sellerUid', 'sellerName', 'sellerHandleOrPhone',
+                         'deliveryZone', 'deliveryDetails',
+                         'quantity', 'unitPriceCents', 'totalCents', 'currencySymbol',
+                         'paymentMethod', 'paymentStatus', 'stage',
+                         'courierName', 'trackingNumber', 'notes', 'lastMessagePreview',
+                         'unreadForSeller', 'unreadForBuyer', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidMarketplaceOrder(incoming()) &&
+                       exists(/databases/$(database)/documents/services/$(incoming().serviceId)) &&
+                       get(/databases/$(database)/documents/services/$(incoming().serviceId)).data.ownerUid == incoming().sellerUid;
+
+      allow update: if isSignedIn() &&
+                       isValidId(orderId) &&
+                       isValidMarketplaceOrder(incoming()) &&
+                       incoming().buyerUid == existing().buyerUid &&
+                       incoming().sellerUid == existing().sellerUid &&
+                       incoming().serviceId == existing().serviceId &&
+                       incoming().createdAt == existing().createdAt &&
+                       existing().stage != 'DELIVERED' &&
+                       existing().stage != 'CANCELLED' &&
+                       (
+                         // Tier 1 (Seller): Advance stage, assign rider/tracking, update payment, or chat metadata
+                         (existing().sellerUid == request.auth.uid && (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['stage', 'courierName', 'trackingNumber', 'paymentStatus', 'unreadForBuyer', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['paymentStatus', 'paymentMethod', 'unreadForBuyer', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['lastMessagePreview', 'unreadForBuyer', 'unreadForSeller', 'updatedAt'])
+                         )) ||
+                         // Tier 2 (Buyer): Cancel while NEW_DM, update delivery note while NEW_DM, or chat metadata
+                         (existing().buyerUid == request.auth.uid && (
+                           (existing().stage == 'NEW_DM' && incoming().stage == 'CANCELLED' && incoming().diff(existing()).affectedKeys().hasOnly(['stage', 'unreadForSeller', 'updatedAt'])) ||
+                           (existing().stage == 'NEW_DM' && incoming().diff(existing()).affectedKeys().hasOnly(['deliveryZone', 'deliveryDetails', 'notes', 'updatedAt'])) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['lastMessagePreview', 'unreadForSeller', 'unreadForBuyer', 'updatedAt'])
+                         ))
+                       );
+
+      allow delete: if isSignedIn() && isValidId(orderId) &&
+                       (existing().buyerUid == request.auth.uid || existing().sellerUid == request.auth.uid) &&
+                       existing().stage == 'CANCELLED';
+
+      match /events/{eventId} {
+        allow get: if isSignedIn() && isValidId(orderId) && isValidId(eventId) &&
+                      (existing().buyerUid == request.auth.uid || existing().sellerUid == request.auth.uid);
+        allow list: if isSignedIn() && isValidId(orderId) &&
+                       (resource.data.buyerUid == request.auth.uid || resource.data.sellerUid == request.auth.uid);
+
+        allow create: if isSignedIn() &&
+                         isValidId(orderId) &&
+                         isValidId(eventId) &&
+                         incoming().actorUid == request.auth.uid &&
+                         (incoming().buyerUid == request.auth.uid || incoming().sellerUid == request.auth.uid) &&
+                         incoming().keys().hasAll(['orderId', 'buyerUid', 'sellerUid', 'actorUid', 'stage', 'title', 'createdAt']) &&
+                         incoming().keys().hasOnly(['orderId', 'buyerUid', 'sellerUid', 'actorUid', 'stage', 'title', 'note', 'createdAt']) &&
+                         isValidMarketplaceEvent(incoming(), orderId) &&
+                         existsAfter(/databases/$(database)/documents/marketplace_orders/$(orderId)) &&
+                         getAfter(/databases/$(database)/documents/marketplace_orders/$(orderId)).data.buyerUid == incoming().buyerUid &&
+                         getAfter(/databases/$(database)/documents/marketplace_orders/$(orderId)).data.sellerUid == incoming().sellerUid;
+
+        allow update, delete: if false;
+      }
+
+      match /messages/{messageId} {
+        allow get: if isSignedIn() && isValidId(orderId) && isValidId(messageId) &&
+                      (existing().buyerUid == request.auth.uid || existing().sellerUid == request.auth.uid);
+        allow list: if isSignedIn() && isValidId(orderId) &&
+                       (resource.data.buyerUid == request.auth.uid || resource.data.sellerUid == request.auth.uid);
+
+        allow create: if isSignedIn() &&
+                         isValidId(orderId) &&
+                         isValidId(messageId) &&
+                         incoming().senderUid == request.auth.uid &&
+                         (incoming().buyerUid == request.auth.uid || incoming().sellerUid == request.auth.uid) &&
+                         incoming().keys().hasAll(['orderId', 'buyerUid', 'sellerUid', 'senderUid', 'senderName', 'senderRole', 'text', 'createdAt']) &&
+                         incoming().keys().hasOnly(['orderId', 'buyerUid', 'sellerUid', 'senderUid', 'senderName', 'senderRole', 'text', 'createdAt']) &&
+                         isValidOrderMessage(incoming(), orderId) &&
+                         existsAfter(/databases/$(database)/documents/marketplace_orders/$(orderId)) &&
+                         getAfter(/databases/$(database)/documents/marketplace_orders/$(orderId)).data.buyerUid == incoming().buyerUid &&
+                         getAfter(/databases/$(database)/documents/marketplace_orders/$(orderId)).data.sellerUid == incoming().sellerUid;
+
+        allow update, delete: if false;
+      }
+    }
+  }
+}
